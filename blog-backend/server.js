@@ -1,0 +1,553 @@
+// blog-backend/server.js
+
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const multer = require('multer');
+const { connectDB, query } = require('./config/db');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const auth = require('./middleware/auth');
+
+const authOptional = (req, res, next) => {
+    let token = req.headers['x-auth-token'] || req.headers['authorization']; // Tokenı header'dan al
+
+    // Token yoksa kullanıcı bilgisi null olur ve devam ederiz
+    if (!token) {
+        req.user = null;
+        return next();
+    }
+
+    // "Bearer " öneki varsa kaldır
+    if (token.startsWith('Bearer ')) {
+        token = token.slice(7, token.length);
+    }
+
+    // Token'ı doğrula
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            // Token geçersizse bile hata döndürme, sadece req.user'ı null yap
+            req.user = null;
+        } else {
+            // Token geçerliyse, payload'dan gelen 'user' objesini req.user'a ata
+            req.user = decoded.user;
+        }
+        next(); // Sonraki middleware veya route handler'a geç
+    });
+};
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+function slugify(title) {
+    return String(title)
+        .toLowerCase()
+        .trim()
+        .replace(/[\s\W-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 280);
+}
+
+function estimateReadingTime(content) {
+    if (!content) return null;
+    const words = String(content).trim().split(/\s+/).length;
+    return Math.max(1, Math.ceil(words / 200)); // ~200 wpm
+}
+
+// Middleware'ler
+app.use(cors());
+app.use(express.json());
+
+// Statik dosyalar (yüklenen görseller)
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'uploads'))
+);
+
+// Multer konfigürasyonu (görsel yükleme)
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, 'uploads'));
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname) || '';
+    const base = path.basename(file.originalname, ext).replace(/\s+/g, '-');
+    const unique = Date.now();
+    cb(null, `${base}-${unique}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Sadece görsel dosyaları yüklenebilir.'));
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
+// Veritabanına bağlanma
+connectDB();
+
+// Basit bir test endpoint'i
+app.get('/', (req, res) => {
+    res.send('Blog Backend API Çalışıyor!');
+});
+
+// Görsel yükleme endpoint'i
+app.post('/api/uploads/image', auth, upload.single('image'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Herhangi bir dosya yüklenmedi.' });
+        }
+        const url = `/uploads/${req.file.filename}`;
+        res.status(201).json({ url });
+    } catch (err) {
+        console.error('Görsel yükleme hatası:', err);
+        res.status(500).json({ message: 'Görsel yüklenemedi.' });
+    }
+});
+
+// Kullanıcı Kayıt (Register) API Endpoint'i
+app.post('/api/register', async (req, res) => {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+        return res.status(400).json({ message: 'Lütfen tüm alanları doldurun.' });
+    }
+
+    try {
+        const existingUser = await query(
+            'SELECT id FROM users WHERE username = $1 OR email = $2',
+            [username, email]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(409).json({ message: 'Bu kullanıcı adı veya e-posta zaten kullanımda.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        await query(
+            `INSERT INTO users (username, email, password_hash)
+             VALUES ($1, $2, $3)`,
+            [username, email, hashedPassword]
+        );
+
+        res.status(201).json({ message: 'Kullanıcı başarıyla kaydedildi!' });
+
+    } catch (err) {
+        console.error('Kayıt sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Kayıt yapılamadı.' });
+    }
+});
+
+
+// Kullanıcı Giriş (Login) API Endpoint'i
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Lütfen e-posta ve şifrenizi girin.' });
+    }
+
+    try {
+        const result = await query(
+            'SELECT id, username, email, password_hash FROM users WHERE email = $1',
+            [email]
+        );
+
+        const user = result.rows[0];
+
+        if (!user) {
+            return res.status(400).json({ message: 'Geçersiz kimlik bilgileri.' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Geçersiz kimlik bilgileri.' });
+        }
+
+        const payload = {
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email
+            }
+        };
+
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' },
+            (err, token) => {
+                if (err) throw err;
+                res.json({
+                    token,
+                    message: 'Giriş başarılı.',
+                    user: payload.user
+                });
+            }
+        );
+
+    } catch (err) {
+        console.error('Giriş sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Giriş yapılamadı.' });
+    }
+});
+
+// Yeni: Blog Yazısı Oluşturma API Endpoint'i (Auth gerektirir)
+app.post('/api/posts', auth, async (req, res) => {
+    const { title, content, excerpt, imageUrl, published, status, publishedAt } = req.body;
+    const user_id = req.user.id; // Token'dan gelen kullanıcı ID'si
+
+    if (!title || !content) {
+        return res.status(400).json({ message: 'Başlık ve içerik zorunludur.' });
+    }
+
+    try {
+        const slug = slugify(title);
+        const readingTime = estimateReadingTime(content);
+        const isPublished = published || status === 'published';
+        const finalStatus = isPublished ? 'published' : 'draft';
+        const finalPublishedAt = isPublished
+            ? publishedAt
+                ? new Date(publishedAt)
+                : new Date()
+            : null;
+
+        // slug çakışmasını basitçe engelle (gerekirse sonuna id eklemek için ikinci fazda geliştirebiliriz)
+        const existingSlug = await query(
+            'SELECT id FROM posts WHERE slug = $1',
+            [slug]
+        );
+        if (existingSlug.rows.length > 0) {
+            return res.status(400).json({ message: 'Benzer başlıkla zaten bir yazı var, lütfen başlığı biraz değiştirin.' });
+        }
+
+        await query(
+            `INSERT INTO posts (user_id, title, slug, content, excerpt, image_url, status, published_at, reading_time)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+                user_id,
+                title,
+                slug,
+                content,
+                excerpt || null,
+                imageUrl || null,
+                finalStatus,
+                finalPublishedAt,
+                readingTime,
+            ]
+        );
+
+        res.status(201).json({ message: 'Blog yazısı başarıyla oluşturuldu!' });
+
+    } catch (err) {
+        console.error('Yazı oluşturma sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Yazı oluşturulamadı.' });
+    }
+});
+
+// Yeni: Tüm Blog Yazılarını Getirme API Endpoint'i
+// Herkesin erişimine açık olacak (auth middleware'i yok)
+app.get('/api/posts', async (req, res) => {
+    try {
+        const result = await query(
+            `
+            SELECT
+                p.id,
+                p.title,
+                p.slug,
+                p.content,
+                p.excerpt,
+                p.image_url,
+                p.created_at,
+                p.updated_at,
+                p.status,
+                p.published_at,
+                p.reading_time,
+                u.username AS "authorUsername",
+                u.id AS "authorId"
+            FROM posts AS p
+            JOIN users AS u ON p.user_id = u.id
+            WHERE p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= NOW())
+            ORDER BY COALESCE(p.published_at, p.created_at) DESC
+            `
+        );
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error('Yazıları getirme sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Yazılar yüklenemedi.' });
+    }
+});
+
+// Tek Bir Blog Yazısını ID'ye Göre Getirme API Endpoint'i
+app.get('/api/posts/:id', authOptional, async (req, res) => {
+    const postId = req.params.id;
+
+    try {
+        const result = await query(
+            `
+            SELECT
+                p.id,
+                p.title,
+                p.slug,
+                p.content,
+                p.excerpt,
+                p.image_url,
+                p.created_at,
+                p.updated_at,
+                p.status,
+                p.published_at,
+                p.reading_time,
+                p.user_id,
+                u.username AS "authorUsername",
+                u.id AS "authorId"
+            FROM posts AS p
+            JOIN users AS u ON p.user_id = u.id
+            WHERE p.id = $1
+            `,
+            [postId]
+        );
+
+        const post = result.rows[0];
+
+        if (!post) {
+            return res.status(404).json({ message: 'Yazı bulunamadı.' });
+        }
+
+        // Eğer yazı yayınlanmamışsa (taslak) ve:
+        //   - req.user null ise (yani kullanıcı giriş yapmamışsa) VEYA
+        //   - req.user.id, yazının user_id'sine eşit değilse (yani kullanıcı yazının sahibi değilse)
+        // o zaman 403 (Forbidden) hatası döndür.
+        if (post.status !== 'published' && (!req.user || post.user_id !== req.user.id)) {
+            return res.status(403).json({ message: 'Bu taslak yazıya erişim yetkiniz yok.' });
+        }
+
+        res.json(post);
+
+    } catch (err) {
+        console.error('Yazıyı getirme sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Yazı yüklenemedi.' });
+    }
+});
+
+// Kullanıcının Tüm Blog Yazılarını ve Kendi Profil Bilgisini Getirme API Endpoint'i
+// Rota adı değiştirildi: /api/users/:id/profile
+app.get('/api/users/:id/profile', auth, async (req, res) => { // <-- Rota ve parametre adı güncellendi
+    // `req.params.id` ile gelen ID'yi doğrudan kullanmayacağız,
+    // bunun yerine `auth` middleware'ından gelen `req.user.id`'yi kullanacağız
+    // çünkü bu rota sadece oturum açmış kullanıcının kendi profilini göstermeli.
+    const authenticatedUserId = req.user.id;
+
+    // Frontend'den gelen id ile authenticatedUserId'yi karşılaştırma satırını kaldırıyoruz,
+    // çünkü bu rotanın doğası gereği her zaman kendi profilini görecek.
+    // if (userIdFromParams !== authenticatedUserId) {
+    //     return res.status(403).json({ message: 'Bu kullanıcıya ait yazıları görüntüleme yetkiniz yok.' });
+    // }
+
+    try {
+        // Kullanıcı bilgilerini getirme (meta alanlarla birlikte)
+        const userResult = await query(
+            `
+            SELECT
+                id,
+                username,
+                email,
+                display_name,
+                avatar_url,
+                bio,
+                role
+            FROM users
+            WHERE id = $1
+            `,
+            [authenticatedUserId]
+        );
+
+        const user = userResult.rows[0];
+
+        if (!user) {
+            // Eğer geçerli bir token'a rağmen kullanıcı bulunamazsa, bu bir problemdir.
+            return res.status(404).json({ message: 'Profil bilgileri bulunamadı.' });
+        }
+
+        // Kullanıcının yazılarını getirme (taslaklar dahil)
+        const resultPosts = await query(
+            `
+            SELECT
+                id,
+                title,
+                slug,
+                content,
+                excerpt,
+                image_url,
+                status,
+                published_at,
+                reading_time,
+                created_at,
+                updated_at
+            FROM posts
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            `,
+            [authenticatedUserId]
+        );
+
+        const statsResult = await query(
+            `
+            SELECT
+                COUNT(*) AS "totalPosts",
+                COUNT(*) FILTER (WHERE status = 'published') AS "publishedPosts",
+                COUNT(*) FILTER (WHERE status = 'draft') AS "draftPosts"
+            FROM posts
+            WHERE user_id = $1
+            `,
+            [authenticatedUserId]
+        );
+
+        const stats = statsResult.rows[0] || {
+            totalPosts: 0,
+            publishedPosts: 0,
+            draftPosts: 0,
+        };
+
+        res.json({
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                display_name: user.display_name,
+                avatar_url: user.avatar_url,
+                bio: user.bio,
+                role: user.role,
+            },
+            stats,
+            posts: resultPosts.rows,
+        });
+
+    } catch (err) {
+        console.error('Kullanıcı yazıları ve profil getirme sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Kullanıcı yazıları veya profil yüklenemedi.' });
+    }
+});
+
+app.put('/api/posts/:id', auth, async (req, res) => {
+    const postId = req.params.id;
+    const authenticatedUserId = req.user.id; // Token'dan gelen kullanıcı ID'si
+    const { title, content, excerpt, imageUrl, published, status, publishedAt } = req.body;
+
+    if (!title || !content) {
+        return res.status(400).json({ message: 'Başlık ve içerik boş olamaz.' });
+    }
+
+    try {
+        // 1. Yazının varlığını ve sahibini kontrol et
+        const postResult = await query(
+            'SELECT user_id FROM posts WHERE id = $1',
+            [postId]
+        );
+
+        const post = postResult.rows[0];
+
+        if (!post) {
+            return res.status(404).json({ message: 'Güncellenecek yazı bulunamadı.' });
+        }
+
+        // 2. Kullanıcının yazının sahibi olup olmadığını kontrol et
+        if (post.user_id !== authenticatedUserId) {
+            return res.status(403).json({ message: 'Bu yazıyı güncelleme yetkiniz yok.' });
+        }
+
+        // 3. Yazıyı güncelle
+        const slug = slugify(title);
+        const readingTime = estimateReadingTime(content);
+        const isPublished = published || status === 'published';
+        const finalStatus = isPublished ? 'published' : 'draft';
+        const finalPublishedAt = isPublished
+            ? publishedAt
+                ? new Date(publishedAt)
+                : new Date()
+            : null;
+
+        await query(
+            `
+            UPDATE posts
+            SET
+                title = $1,
+                slug = $2,
+                content = $3,
+                excerpt = $4,
+                image_url = $5,
+                status = $6,
+                published_at = $7,
+                reading_time = $8,
+                updated_at = NOW()
+            WHERE id = $9
+            `,
+            [
+                title,
+                slug,
+                content,
+                excerpt || null,
+                imageUrl || null,
+                finalStatus,
+                finalPublishedAt,
+                readingTime,
+                postId,
+            ]
+        );
+
+        res.status(200).json({ message: 'Yazı başarıyla güncellendi!' });
+
+    } catch (err) {
+        console.error('Yazı güncelleme sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Yazı güncellenemedi.' });
+    }
+});
+
+app.delete('/api/posts/:id', auth, async (req, res) => {
+    const postId = req.params.id;
+    const authenticatedUserId = req.user.id; // Token'dan gelen kullanıcı ID'si
+
+    try {
+        // 1. Yazının varlığını ve sahibini kontrol et
+        const postResult = await query(
+            'SELECT user_id FROM posts WHERE id = $1',
+            [postId]
+        );
+
+        const post = postResult.rows[0];
+
+        if (!post) {
+            return res.status(404).json({ message: 'Silinecek yazı bulunamadı.' });
+        }
+
+        // 2. Kullanıcının yazının sahibi olup olmadığını kontrol et
+        if (post.user_id !== authenticatedUserId) {
+            return res.status(403).json({ message: 'Bu yazıyı silme yetkiniz yok.' });
+        }
+
+        // 3. Yazıyı sil
+        await query('DELETE FROM posts WHERE id = $1', [postId]);
+
+        res.status(200).json({ message: 'Yazı başarıyla silindi!' });
+
+    } catch (err) {
+        console.error('Yazı silme sırasında hata oluştu:', err);
+        res.status(500).json({ message: 'Sunucu hatası: Yazı silinemedi.' });
+    }
+});
+
+// Sunucuyu başlat
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Access at: http://localhost:${PORT}`);
+});
