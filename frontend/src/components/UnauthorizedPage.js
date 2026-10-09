@@ -1,14 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './UnauthorizedPage.css'; // Stil dosyası oluşturabilirsiniz
 
 function UnauthorizedPage() {
   return (
-    <div className="unauthorized-container">
-      <h2>Erişim Reddedildi</h2>
-      <p>Bu sayfaya erişim yetkiniz bulunmamaktadır veya oturumunuz sona ermiştir.</p>
-      <Link to="/login" className="unauthorized-login-link">Giriş Yapmak İçin Tıklayın</Link>
-      <Link to="/" className="unauthorized-home-link">Ana Sayfaya Dön</Link>
+    <div className="sheet">
+      <p className="sheet-kicker">Erişim</p>
+      <h1 className="sheet-title">Bu sayfa sana kapalı</h1>
+      <p className="sheet-note">Oturumun bitmiş olabilir ya da bu yazı başka bir yazara ait.</p>
+      <p className="sheet-switch">
+        <Link to="/login" className="quiet-link">
+          Giriş yap
+        </Link>
+        {' · '}
+        <Link to="/" className="quiet-link">
+          Ana sayfaya dön
+        </Link>
+      </p>
     </div>
   );
 }

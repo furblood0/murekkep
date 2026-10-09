@@ -272,7 +272,7 @@ app.get('/api/posts', async (req, res) => {
                 p.status,
                 p.published_at,
                 p.reading_time,
-                u.username AS "authorUsername",
+                COALESCE(NULLIF(BTRIM(u.display_name), ''), u.username) AS "authorUsername",
                 u.id AS "authorId"
             FROM posts AS p
             JOIN users AS u ON p.user_id = u.id
@@ -309,7 +309,7 @@ app.get('/api/posts/:id', authOptional, async (req, res) => {
                 p.published_at,
                 p.reading_time,
                 p.user_id,
-                u.username AS "authorUsername",
+                COALESCE(NULLIF(BTRIM(u.display_name), ''), u.username) AS "authorUsername",
                 u.id AS "authorId"
             FROM posts AS p
             JOIN users AS u ON p.user_id = u.id

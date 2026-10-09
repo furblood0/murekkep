@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Input } from '../ui/Input';
 import { TextArea } from '../ui/TextArea';
 import { Button } from '../ui/Button';
-import { colors, spacing } from '../../theme';
 import postService from '../../services/post.service';
+import { resolveImageUrl } from '../../config';
 
 export function PostEditor({
   initialTitle = '',
@@ -20,8 +20,8 @@ export function PostEditor({
   const [imageUrl, setImageUrl] = useState(initialImageUrl);
   const [content, setContent] = useState(initialContent);
   const [published, setPublished] = useState(initialPublished);
-  const [mode, setMode] = useState('edit'); // edit | preview
-  const [imageMode, setImageMode] = useState('url'); // url | file
+  const [mode, setMode] = useState('edit');
+  const [imageMode, setImageMode] = useState('url');
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
@@ -37,7 +37,7 @@ export function PostEditor({
     });
   };
 
-  const wordCount = content ? content.trim().split(/\s+/).length : 0;
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
 
   const handleImageUpload = async () => {
     if (!imageFile) {
@@ -59,78 +59,27 @@ export function PostEditor({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      {error && (
-        <div
-          style={{
-            marginBottom: spacing.lg,
-            padding: `${spacing.sm} ${spacing.md}`,
-            borderRadius: 8,
-            border: `1px solid ${colors.danger}`,
-            background: colors.dangerSoft,
-            fontSize: '0.85rem',
-          }}
-        >
-          {error}
-        </div>
-      )}
+    <form className="editor" onSubmit={handleSubmit}>
+      {error && <div className="notice">{error}</div>}
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: spacing.md,
-          fontSize: '0.85rem',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            gap: spacing.sm,
-          }}
-        >
+      <div className="editor-bar">
+        <div className="filters">
           <button
             type="button"
+            className={mode === 'edit' ? 'mode is-active' : 'mode'}
             onClick={() => setMode('edit')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: 9999,
-              border:
-                mode === 'edit'
-                  ? `1px solid ${colors.primary}`
-                  : `1px solid ${colors.borderSubtle}`,
-              backgroundColor:
-                mode === 'edit' ? colors.primarySoft : 'transparent',
-              color: colors.textPrimary,
-              cursor: 'pointer',
-            }}
           >
             Düzenle
           </button>
           <button
             type="button"
+            className={mode === 'preview' ? 'mode is-active' : 'mode'}
             onClick={() => setMode('preview')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: 9999,
-              border:
-                mode === 'preview'
-                  ? `1px solid ${colors.primary}`
-                  : `1px solid ${colors.borderSubtle}`,
-              backgroundColor:
-                mode === 'preview' ? colors.primarySoft : 'transparent',
-              color: colors.textPrimary,
-              cursor: 'pointer',
-            }}
           >
             Önizleme
           </button>
         </div>
-
-        <span style={{ color: colors.textMuted }}>
-          Yaklaşık kelime sayısı: {wordCount}
-        </span>
+        <p className="editor-count">{wordCount} kelime</p>
       </div>
 
       {mode === 'edit' ? (
@@ -138,81 +87,34 @@ export function PostEditor({
           <Input
             id="title"
             label="Başlık"
+            variant="headline"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
           />
           <Input
             id="excerpt"
-            label="Özet (opsiyonel)"
+            label="Özet"
             value={excerpt}
             onChange={(e) => setExcerpt(e.target.value)}
-            helperText="Liste görünümünde gözükecek kısa açıklama."
+            helperText="İçindekilerde görünecek kısa cümle. Boş bırakılabilir."
           />
-          <div
-            style={{
-              marginBottom: spacing.lg,
-              padding: spacing.md,
-              borderRadius: 12,
-              border: `1px solid ${colors.borderSubtle}`,
-              backgroundColor: '#020617',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: spacing.sm,
-                fontSize: '0.85rem',
-              }}
-            >
-              <span style={{ color: colors.textMuted }}>
-                Kapak görseli (opsiyonel)
-              </span>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: spacing.xs,
-                }}
-              >
+
+          <div className="cover-box">
+            <div className="cover-head">
+              <span className="cover-label">Kapak görseli</span>
+              <div className="filters">
                 <button
                   type="button"
+                  className={imageMode === 'url' ? 'mode is-active' : 'mode'}
                   onClick={() => setImageMode('url')}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 9999,
-                    border:
-                      imageMode === 'url'
-                        ? `1px solid ${colors.primary}`
-                        : `1px solid ${colors.borderSubtle}`,
-                    backgroundColor:
-                      imageMode === 'url' ? colors.primarySoft : 'transparent',
-                    color: colors.textPrimary,
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
-                  }}
                 >
-                  URL
+                  Adres
                 </button>
                 <button
                   type="button"
+                  className={imageMode === 'file' ? 'mode is-active' : 'mode'}
                   onClick={() => setImageMode('file')}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 9999,
-                    border:
-                      imageMode === 'file'
-                        ? `1px solid ${colors.primary}`
-                        : `1px solid ${colors.borderSubtle}`,
-                    backgroundColor:
-                      imageMode === 'file'
-                        ? colors.primarySoft
-                        : 'transparent',
-                    color: colors.textPrimary,
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
-                  }}
                 >
                   Dosya
                 </button>
@@ -222,10 +124,10 @@ export function PostEditor({
             {imageMode === 'url' ? (
               <Input
                 id="imageUrl"
-                label="Kapak görseli URL"
+                label="Görsel adresi"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                helperText="Dış bir URL verebilir veya boş bırakabilirsin."
+                helperText="Dış bir adres yapıştırabilir veya boş bırakabilirsin."
               />
             ) : (
               <div>
@@ -235,19 +137,9 @@ export function PostEditor({
                   onChange={(e) =>
                     setImageFile(e.target.files ? e.target.files[0] : null)
                   }
-                  style={{ marginBottom: spacing.sm }}
                 />
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: '0.8rem',
-                  }}
-                >
-                  <span style={{ color: colors.textMuted }}>
-                    Maksimum 5MB, sadece görsel dosyalar.
-                  </span>
+                <div className="cover-actions">
+                  <span>En fazla 5 MB, yalnızca görsel.</span>
                   <Button
                     type="button"
                     variant="secondary"
@@ -257,49 +149,23 @@ export function PostEditor({
                     {uploading ? 'Yükleniyor...' : 'Yükle'}
                   </Button>
                 </div>
-                {uploadError && (
-                  <div
-                    style={{
-                      marginTop: spacing.xs,
-                      fontSize: '0.8rem',
-                      color: colors.textDanger,
-                    }}
-                  >
-                    {String(uploadError)}
-                  </div>
-                )}
+                {uploadError && <div className="field-help is-error">{String(uploadError)}</div>}
               </div>
             )}
 
-            {imageUrl && (
-              <div
-                style={{
-                  marginTop: spacing.sm,
-                  fontSize: '0.8rem',
-                  color: colors.textMuted,
-                }}
-              >
-                Seçili görsel: <code>{imageUrl}</code>
-              </div>
-            )}
+            {imageUrl && <div className="chosen">Seçili görsel: {imageUrl}</div>}
           </div>
+
           <TextArea
             id="content"
-            label="İçerik"
+            label="Metin"
+            variant="prose"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             required
           />
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing.sm,
-              marginBottom: spacing.xl,
-              fontSize: '0.9rem',
-            }}
-          >
+          <div className="check-row">
             <input
               type="checkbox"
               id="published"
@@ -307,70 +173,27 @@ export function PostEditor({
               checked={published}
               onChange={(e) => setPublished(e.target.checked)}
             />
-            <label htmlFor="published">Yayımla</label>
+            <label htmlFor="published">Yayınla</label>
           </div>
         </>
       ) : (
-        <div
-          style={{
-            borderRadius: 12,
-            border: `1px solid ${colors.borderSubtle}`,
-            padding: spacing.lg,
-            backgroundColor: '#020617',
-            marginBottom: spacing.xl,
-          }}
-        >
+        <div className="preview">
           {imageUrl && (
-            <div
-              style={{
-                marginBottom: spacing.md,
-                borderRadius: 12,
-                overflow: 'hidden',
-              }}
-            >
-              <img
-                src={imageUrl}
-                alt={title || 'Önizleme görseli'}
-                style={{ width: '100%', display: 'block', objectFit: 'cover' }}
-              />
-            </div>
+            <figure className="preview-figure">
+              <img src={resolveImageUrl(imageUrl)} alt="" />
+            </figure>
           )}
-          <h1 style={{ marginTop: 0, marginBottom: spacing.sm }}>{title}</h1>
-          {excerpt && (
-            <p
-              style={{
-                marginTop: 0,
-                marginBottom: spacing.lg,
-                color: colors.textMuted,
-              }}
-            >
-              {excerpt}
-            </p>
-          )}
-          <div
-            style={{
-              whiteSpace: 'pre-wrap',
-              lineHeight: 1.6,
-              fontSize: '0.95rem',
-            }}
-          >
-            {content}
-          </div>
+          <h1>{title || 'Başlıksız'}</h1>
+          {excerpt && <p className="preview-excerpt">{excerpt}</p>}
+          <div className="preview-body">{content}</div>
         </div>
       )}
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: spacing.sm,
-        }}
-      >
+      <div className="editor-actions">
         <Button type="submit" disabled={submitting}>
-          {submitting ? 'İşleniyor...' : 'Kaydet'}
+          {submitting ? 'Kaydediliyor...' : 'Kaydet'}
         </Button>
       </div>
     </form>
   );
 }
-

@@ -1,13 +1,11 @@
-// src/components/BlogDetailPage.js (Güncellenmiş Hali)
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import postService from '../services/post.service';
-import './BlogDetailPage.css';
 import { resolveImageUrl } from '../config';
+import { formatDate, readingLabel } from '../format';
 
 function BlogDetailPage() {
-  const { id } = useParams(); // URL'den blog yazısının ID'sini al
+  const { id } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,48 +24,45 @@ function BlogDetailPage() {
     };
 
     fetchPost();
-  }, [id]); // id değiştiğinde tekrar çalıştır
+  }, [id]);
 
   if (loading) {
-    return <div className="blog-detail-status">Yazı yükleniyor...</div>;
+    return <p className="status">Yazı hazırlanıyor.</p>;
   }
 
   if (error) {
-    return <div className="blog-detail-status blog-detail-status-error">Hata: {error}</div>;
+    return <p className="status status-error">{error}</p>;
   }
 
   if (!post) {
-    return <div className="blog-detail-status">Yazı bulunamadı.</div>;
+    return <p className="status">Yazı bulunamadı.</p>;
   }
 
+  const meta = [
+    post.authorUsername || 'Bilinmeyen yazar',
+    formatDate(post.published_at || post.created_at),
+    readingLabel(post.reading_time),
+  ].filter(Boolean);
+
+  const publishedAt = post.published_at || post.created_at;
+  const showUpdated =
+    post.updated_at &&
+    formatDate(post.updated_at) !== formatDate(publishedAt);
+
   return (
-    <article className="blog-detail-container">
+    <article className="essay">
+      {post.status === 'draft' && <p className="essay-kicker">Taslak</p>}
+      <h1 className="essay-title">{post.title}</h1>
+      <p className="essay-meta">{meta.join(' · ')}</p>
       {post.image_url && (
-        <div className="blog-detail-hero">
-          <img
-            src={resolveImageUrl(post.image_url)}
-            alt={post.title}
-            className="blog-detail-image"
-          />
-        </div>
+        <figure className="essay-figure">
+          <img src={resolveImageUrl(post.image_url)} alt="" />
+        </figure>
       )}
-      <header className="blog-detail-header">
-        <h1 className="blog-detail-title">{post.title}</h1>
-        <p className="blog-detail-meta">
-          <span className="author-name-detail">
-            {post.authorUsername || 'Bilinmeyen yazar'}
-          </span>
-          <span className="post-date-detail">
-            {new Date(post.published_at || post.created_at).toLocaleDateString()}
-          </span>
-        </p>
-      </header>
-      <section className="blog-detail-content">
-        {post.content}
-      </section>
-      {post.updated_at && (
-        <footer className="blog-detail-updated">
-          Son Güncelleme: {new Date(post.updated_at).toLocaleDateString()}
+      <div className="essay-body">{post.content}</div>
+      {showUpdated && (
+        <footer className="essay-updated">
+          Son güncelleme: {formatDate(post.updated_at)}
         </footer>
       )}
     </article>

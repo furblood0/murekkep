@@ -10,83 +10,130 @@ process.env.DB_DATABASE = process.env.DB_DATABASE || 'blogdb';
 const bcrypt = require('bcryptjs');
 const { connectDB, query } = require('../config/db');
 
-const DEMO_PASSWORD = 'demo1234';
+const DEMO_PASSWORD = 'murekkep';
+
+const retiredEmails = [
+  'demo@myblog.local',
+  'elif@myblog.local',
+  'selin.acar@example.com',
+  'emre.kaya@example.com',
+];
 
 const users = [
   {
-    username: 'demo',
-    email: 'demo@myblog.local',
-    displayName: 'Demo Yazar',
-    bio: 'MyBlog üzerindeki örnek hesap. Yerel deneme için kullanılır.',
+    username: 'selinacar',
+    email: 'selin.acar@example.com',
+    displayName: 'Selin Acar',
+    bio: 'İstanbul’da yaşıyor. Sabah, şehir ve masa başı üzerine kısa yazılar bırakıyor.',
   },
   {
-    username: 'elif',
-    email: 'elif@myblog.local',
-    displayName: 'Elif Yılmaz',
-    bio: 'Kısa notlar ve okuma üzerine yazıyor.',
+    username: 'emrekaya',
+    email: 'emre.kaya@example.com',
+    displayName: 'Emre Kaya',
+    bio: 'Editör. Dikkat, not ve çalışma ritmi üzerine yazıyor.',
   },
 ];
 
 const posts = [
   {
-    author: 'demo',
-    title: 'Yazmaya nasıl başlanır',
-    slug: 'yazmaya-nasil-baslanir',
-    excerpt: 'Boş sayfa korkutucu görünür. İlk paragrafı bitirmek, geri kalanın yolunu açar.',
+    author: 'selinacar',
+    title: 'Sabahın ilk saati',
+    slug: 'sabahin-ilk-saati',
+    excerpt: 'Gün, haberlerden önce bir sessizlik bırakır. O sessizliği kaçırmamak yeter.',
     imageUrl:
-      'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80',
-    content: `Boş bir editör, yapılacak işten çok daha büyük görünür. Başlık koyup ilk cümleyi yazmak, çoğu zaman günün en zor adımıdır.
+      'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=1600&q=80',
+    status: 'published',
+    publishedAt: '2026-09-18T08:10:00+03',
+    content: `Perdeler henüz aralıkken oda daha büyük görünür. Işık masanın kenarına düşer, fincan soğuktur, dışarıdaki sesler tam olarak başlamamıştır.
 
-Bunu aşmanın pratik bir yolu var: ilk taslağı kimseye göstermeyeceğinizi kabul etmek. Cümlelerin düzgün olması gerekmez. Amaç, aklınızdaki fikri ekrana taşımaktır. MyBlog'da bir yazıyı taslak olarak kaydedip sonra yayınlayabilirsiniz; bitirmeden paylaşmak zorunda değilsiniz.
+Bu saat bir program istemez. Açılacak ilk şey bir ekran değil, bir pencere olsun yeter. Sokak henüz acele etmiyordur. Karşı apartmanın bir camı yanar, bir başkası kararır. Şehir uyanırken kendi sırasını bozmaz.
 
-Kısa tutun. Tek bir fikir, üç dört paragraf ve net bir kapanış, dağınık uzun bir metinden daha okunur. Kapak görseli eklemek isteğe bağlıdır; yazının kendisi yeterince netse kart zaten anlaşılır durur.
+Yazmak da bu sıraya uyar. İlk cümle parlak olmak zorunda değildir. Günün geri kalanı onu düzeltecek zamanı zaten verir. Sabahın işi, cümleyi bitirmek değil, masada kalmaktır.
 
-Yayınlamadan önce bir kez sesli okuyun. Takıldığınız yer, okurun da takılacağı yerdir. Sonra durumu yayına alın. Gerisi, bir sonraki yazının konusudur.`,
+Kahve biter, ışık yer değiştirir, dışarıdaki tempo içeri sızar. O zaman kalkılır. Erken saatin kıymeti, uzun sürmesinde değil, henüz kimseye ait olmamasındadır.`,
   },
   {
-    author: 'demo',
-    title: 'Karanlık temada uzun okuma',
-    slug: 'karanlik-temada-uzun-okuma',
-    excerpt: 'Düşük kontrast yorar, aşırı parlak beyaz da öyle. Okuma yüzeyi sakin kalmalı.',
+    author: 'emrekaya',
+    title: 'Dikkat dağılınca',
+    slug: 'dikkat-dagilinca',
+    excerpt: 'Dağılmak bir arıza değil. Nereye gittiğini fark etmek, işin yarısı.',
     imageUrl:
-      'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
-    content: `Uzun bir yazıyı karanlık bir arayüzde okumak, parlak bir sayfadan daha rahat hissettirebilir. Bu, her koyu rengin iyi olduğu anlamına gelmez. Metin ile zemin birbirine çok yakınsa göz satırı takip edemez.
+      'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1600&q=80',
+    status: 'published',
+    publishedAt: '2026-08-02T11:30:00+03',
+    content: `Bir paragrafın ortasında zihin başka bir odaya geçer. Bunu fark etmek genellikle birkaç dakika sürer. Ekranda imleç duruyordur, düşünce ise çoktan market listesine ya da cevaplanmamış bir cümleye gitmiştir.
 
-İyi bir okuma yüzeyi sakin kalır. Başlık belirgin olur, gövde metni nefes alır, kenarlarda gereksiz çerçeve olmaz. Kapak görseli yazının konusunu destekler; sayfanın yarısını kaplayan bir süs olmaz.
+Dikkat, kapatılıp açılan bir düğme değildir. İnce bir iptir ve kopunca azarlamak işe yaramaz. Kalemin durduğu yeri işaretlemek, ipi yeniden tutmaktan daha dürüsttür.
 
-MyBlog'un detay sayfası satır sonlarını korur. Editörde bıraktığınız boşluklar, yayında da durur. Bu yüzden paragrafları editörde ayırmak, sonradan biçim vermekten daha doğru sonuç verir.
+Kısa bir ara, uzun bir suçluluk duygusundan iyidir. Pencereye bakmak, su içmek, cümlenin nerede koptuğunu tek satırla not etmek yeter. Geri dönüldüğünde metin kaldığı yerden devam eder; çünkü bırakıldığı yer bellidir.
 
-Kısa oturumlarda denemek yeterli. Bir yazıyı baştan sona okuyun. Gözünüz başlığa mı kayıyor, yoksa gövdeyi mi bırakıyor? Cevap, bir sonraki düzenlemede neyi sadeleştireceğinizi söyler.`,
+Dağılmayan bir zihin hedef değildir. Dağıldığını görüp masaya geri oturan bir zihin, çalışmanın ta kendisidir.`,
   },
   {
-    author: 'elif',
-    title: 'İlk PostgreSQL şeması',
-    slug: 'ilk-postgresql-semasi',
-    excerpt: 'Kullanıcı ve yazı tablosu, bir blogun omurgasını kurar. Geri kalanı sonra eklenir.',
+    author: 'selinacar',
+    title: 'Bir şehri yürüyerek tanımak',
+    slug: 'bir-sehri-yuruyerek-tanimak',
+    excerpt: 'Harita mesafeyi gösterir. Kaldırım, şehrin nasıl nefes aldığını.',
     imageUrl:
-      'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?auto=format&fit=crop&w=1200&q=80',
-    content: `Bir blog veritabanı iki tabloda ayağa kalkar: kullanıcılar ve yazılar. Kullanıcının adı, e-postası ve parola özeti vardır. Yazının başlığı, içeriği, durumu ve sahibi vardır. Sahip, kullanıcıya yabancı anahtarla bağlanır.
+      'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?auto=format&fit=crop&w=1600&q=80',
+    status: 'published',
+    publishedAt: '2026-06-14T16:00:00+03',
+    content: `Bir şehri tanıdığımızı sandığımız an, genellikle bir hatta sıkıştığımız andır. Aynı durak, aynı yokuş, aynı fırın. Rota kısalır, şehir de onunla birlikte küçülür.
 
-Durum alanı taslak ile yayını ayırır. Yayın tarihi, yazının akışta hangi sırada duracağını belirler. Slug, başlıktan üretilen kısa adrestir; aynı slug iki kez kullanılamaz.
+Yürümek bu hattı bozar. Amaçsız bir sapak, haritada görünmeyen bir avlu, öğleden sonra kapanan bir dükkân. Şehir bu ayrıntılarda toplanır. Uzaklık metreyle değil, bir yokuşun nefes kesmesiyle ölçülür.
 
-İndeksler baştan abartılmaz. Yazıları kullanıcıya ve yayın durumuna göre süzmek en sık yapılan iştir, o yüzden bu kolonlar indekslenir. Yorum gibi henüz kullanılmayan tablolar şemada durabilir, fakat arayüz onları vaat etmez.
+İstanbul’da bunu özellikle hissedersiniz. İki sokak arasında ışık değişir, bir mahalle başka bir dile geçer. Yürüyüş bittiğinde not alınan şey manzara değildir; bir kapının rengi, bir radyonun sesi, taşın ayağınızın altında değişmesidir.
 
-Şemayı Docker ile ilk açılışta kurmak, herkesin aynı tablolarla başlamasını sağlar. Örnek veriyi ise ayrıca basmak daha doğru: şema bir kez oluşur, örnek yazılar istediğiniz zaman yenilenebilir.`,
+Şehri sevmek, onu ezberlemek değildir. Ara sıra kaybolmaya razı olmaktır.`,
   },
   {
-    author: 'elif',
-    title: 'Taslağı neden bekletmeli',
-    slug: 'taslagi-neden-bekletmeli',
-    excerpt: 'Yayın düğmesi aceleye gelmez. Bir gece bekleyen metin, sabah daha dürüst görünür.',
+    author: 'emrekaya',
+    title: 'Not almanın yavaş hali',
+    slug: 'not-almanin-yavas-hali',
+    excerpt: 'Hızlı not unutulur. Yavaş not, cümlenin neden kurulduğunu hatırlar.',
     imageUrl:
-      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80',
-    content: `Taslak, bitmemiş işin utancı değildir. Okurun görmemesi gereken ara haldir. Başlık hâlâ zayıfsa, örnek eksikse veya son paragraf konuyu kapatmıyorsa yayınlamak acele olur.
+      'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1600&q=80',
+    status: 'published',
+    publishedAt: '2026-03-27T19:20:00+03',
+    content: `Hızlı bir not, sonradan bakınca yabancı gelir. Üç kelime, bir ok, yanında hiçbir bağlam yok. O anki heyecan defterde durmaz.
 
-Bekletmenin pratik hali basittir. Yazıyı taslak kaydedin, profilde yalnızca taslakları süzün ve ertesi gün başlığı yeniden okuyun. Hâlâ aynı cümleyi kuruyorsanız metin hazırdır. Kuramıyorsanız bir paragraf daha ister.
+Yavaş not daha az şey yazar ve daha çok şey tutar. Cümlenin tamamını kurmak şart değildir; ama kelimenin neden seçildiği bir yana iliştirilir. “Akşam ışığı” yetmez. “Mutfak penceresi, saat altı, çay henüz demlenmeden” yeter.
 
-Profildeki sayılar bu ayrımı görünür kılar: toplam, yayında olan ve taslak. Hepsi yayındaysa ya çok üretiyorsunuzdur ya da hiç elemeden basıyorsunuzdur. İkisi de mümkün; ikincisi daha sık görülür.
+Bunu bir yöntem diye satmaya gerek yok. Defterin kenarında tarih olsun, cümle kendi sesiyle yazılsın, ertesi gün aynı sayfa açılsın. Anlaşılan satır kalır, anlaşılmayan çizilir.
 
-Yayınladığınızda yazı ana akışa düşer ve giriş yapmayan biri de okuyabilir. Taslak ise yalnızca size açıktır. Bu sınır, bekletmeyi güvenli hale getirir.`,
+Yazının ham maddesi bu çiziklerdir. Parlak bir fikir değil, hatırlanan bir ayrıntı.`,
+  },
+  {
+    author: 'selinacar',
+    title: 'Masanın üstü',
+    slug: 'masanin-ustu',
+    excerpt: 'Dağınık bir masa tembellik değildir. Üzerinde duran şey, o günün konusu olur.',
+    imageUrl:
+      'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1600&q=80',
+    status: 'published',
+    publishedAt: '2026-01-09T13:05:00+03',
+    content: `Masanın üstünü her akşam silmek bir erdem sayılır. Ben bundan pek emin değilim. Sabah karşıma çıkan fincan, açık kalan kitap ve kenara itilmiş bir zarf, dünün nerede bittiğini gösterir.
+
+Tabii ki bir sınır vardır. Kâğıt yığını kapıyı kapatıyorsa bu artık bir iz değil, bir engeldir. Ama boşaltılmış, parlatılmış, hiçbir şeye benzemeyen bir yüzey de yazmaya davet etmez. Üzerinde duran bir nesne, ele alınacak bir konu bırakır.
+
+Bugün masada bir bilet ve bir kalem duruyor. Bilet dünkü yürüyüşten, kalem bitmemiş bir cümleden. İkisi yan yana kalınca yazının nereden başlayacağı belli oluyor.
+
+Düzen, her şeyi yok etmek değildir. Neyin kalacağına karar vermektir.`,
+  },
+  {
+    author: 'emrekaya',
+    title: 'Bitmeyen paragraf',
+    slug: 'bitmeyen-paragraf',
+    excerpt: 'Son cümle henüz oturmadı. Bir gece daha dursun.',
+    imageUrl: null,
+    status: 'draft',
+    publishedAt: null,
+    createdAt: '2026-10-05T21:40:00+03',
+    content: `Paragraf neredeyse bitti. Son cümle bir kapı gibi duruyor ama menteşesi gevşek. Zorlasam kapanır, sonra da okur o aralıktan rüzgârı hisseder.
+
+Bu yüzden bugün bırakıyorum. Yarın aynı satırı yüksek sesle okuyacağım. Takılırsam cümle yanlış yerde duruyordur. Takılmazsam yayınlanır.
+
+Şimdilik taslak olarak kalsın.`,
   },
 ];
 
@@ -95,50 +142,49 @@ function readingTime(content) {
   return Math.max(1, Math.ceil(words / 200));
 }
 
-async function ensureUser(user, passwordHash) {
-  const existing = await query('SELECT id FROM users WHERE email = $1', [user.email]);
-  if (existing.rows.length > 0) {
-    return existing.rows[0].id;
-  }
-
-  const inserted = await query(
-    `INSERT INTO users (username, email, password_hash, display_name, bio)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id`,
-    [user.username, user.email, passwordHash, user.displayName, user.bio]
-  );
-  return inserted.rows[0].id;
-}
-
 async function main() {
   await connectDB();
+
+  await query('DELETE FROM users WHERE email = ANY($1::text[])', [retiredEmails]);
+
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const ids = {};
 
   for (const user of users) {
-    ids[user.username] = await ensureUser(user, passwordHash);
+    const inserted = await query(
+      `INSERT INTO users (username, email, password_hash, display_name, bio)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [user.username, user.email, passwordHash, user.displayName, user.bio]
+    );
+    ids[user.username] = inserted.rows[0].id;
   }
 
   for (const post of posts) {
-    const userId = ids[post.author];
+    const createdAt = post.createdAt || post.publishedAt;
     await query(
-      `INSERT INTO posts (user_id, title, slug, content, excerpt, image_url, status, published_at, reading_time)
-       VALUES ($1, $2, $3, $4, $5, $6, 'published', NOW(), $7)
-       ON CONFLICT (slug) DO UPDATE SET
-         title = EXCLUDED.title,
-         content = EXCLUDED.content,
-         excerpt = EXCLUDED.excerpt,
-         image_url = EXCLUDED.image_url,
-         status = 'published',
-         reading_time = EXCLUDED.reading_time,
-         updated_at = NOW()
-       WHERE posts.user_id = EXCLUDED.user_id`,
-      [userId, post.title, post.slug, post.content, post.excerpt, post.imageUrl, readingTime(post.content)]
+      `INSERT INTO posts (
+         user_id, title, slug, content, excerpt, image_url, status, published_at, reading_time, created_at, updated_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`,
+      [
+        ids[post.author],
+        post.title,
+        post.slug,
+        post.content,
+        post.excerpt,
+        post.imageUrl,
+        post.status,
+        post.publishedAt,
+        readingTime(post.content),
+        createdAt,
+      ]
     );
   }
 
   console.log('Örnek veriler hazır.');
-  console.log('Hesaplar: demo@myblog.local ve elif@myblog.local');
+  console.log('Selin Acar — selin.acar@example.com');
+  console.log('Emre Kaya — emre.kaya@example.com');
   console.log(`Şifre: ${DEMO_PASSWORD}`);
   process.exit(0);
 }

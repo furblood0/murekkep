@@ -10,7 +10,7 @@ import 'react-toastify/dist/ReactToastify.css';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <BrowserRouter>
-      <ToastContainer />
+      <ToastContainer position="bottom-center" hideProgressBar closeOnClick />
       <AuthProvider>
         <App />
       </AuthProvider>

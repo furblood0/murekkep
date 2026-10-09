@@ -1,127 +1,130 @@
-# MyBlog - Full-Stack Blog Application
+# Mürekkep
 
-A full-stack blog with a React frontend and a Node.js API. Visitors can read published posts without an account. Writing, editing, and the profile dashboard require a login.
+React ve Node.js ile yazılmış bir blog. Yayınlanmış yazılar herkese açık. Yazmak, düzenlemek ve profil giriş ister.
 
-The interface is in Turkish.
+## Ekran görüntüleri
 
-## Features
+### Ana sayfa
 
-- **Public reading**: The feed and post pages are open. Drafts stay private to the author.
-- **Authentication**: Registration and login with JWT. The session survives a page refresh.
-- **Posts**: Create, edit, delete, and publish. Each post has a slug, status, publish date, and estimated reading time.
-- **Editor**: Dark writing surface with a live preview. Line breaks are kept on the detail page.
-- **Cover images**: Upload a file (stored by the API) or paste an external image URL.
-- **Feed**: Cards with optional cover, title, teaser, author, and date. Signed-in users also see a “new post” card.
-- **Profile**: Display name, avatar, bio, and counts for all, published, and draft posts. Filter the list by status.
-- **Dark UI**: One dark theme across the app.
+![Ana sayfa](docs/screenshots/home.png)
 
-## Tech Stack
+### Yazı
 
-### Frontend
-- React 19
-- React Router DOM
-- Axios
-- React Toastify
+![Yazı](docs/screenshots/article.png)
 
-### Backend
-- Node.js
-- Express.js
-- JWT
-- Bcrypt.js
-- Multer for cover images
-- PostgreSQL via `pg`, run in Docker
+### Profil
 
-## Prerequisites
+![Profil](docs/screenshots/profile.png)
 
-- Node.js 18 or newer
+### Editör
+
+![Editör](docs/screenshots/editor.png)
+
+### Giriş
+
+![Giriş](docs/screenshots/login.png)
+
+### Kayıt
+
+![Kayıt](docs/screenshots/register.png)
+
+## Özellikler
+
+- Herkese açık yazı listesi ve yazı sayfası. Taslaklar yalnızca yazarına görünür.
+- Kayıt ve giriş. Oturum sayfa yenilenince düşmez.
+- Yazı oluşturma, düzenleme, silme ve yayınlama.
+- Önizlemeli editör. Satır sonları yazı sayfasında korunur.
+- Kapak görseli: dosya yükleme veya dış bağlantı.
+- Profilde isim, kısa tanıtım ve yazı sayıları. Liste yayında olanlar ile taslaklar arasında süzülür.
+
+## Teknolojiler
+
+- **Ön yüz:** React 19, React Router, Axios
+- **API:** Node.js, Express, JWT, bcrypt, Multer
+- **Veritabanı:** PostgreSQL, Docker üzerinde
+
+## Gereksinimler
+
+- Node.js 18 veya üzeri
 - npm
 - Docker Desktop
 - Git
 
-## Quick Start
+## Kurulum
 
-### 1. Clone the repository
+### 1. Depoyu klonla
 
 ```bash
 git clone https://github.com/furblood0/my-blog-project.git
 cd my-blog-project
 ```
 
-### 2. Install dependencies
+### 2. Bağımlılıkları kur
 
 ```bash
 npm run install-all
 ```
 
-### 3. Start PostgreSQL
+### 3. Veritabanını başlat
 
 ```bash
 docker compose up -d
 ```
 
-On first start, `db-init/database-schema-postgres.sql` creates the tables.
+İlk açılışta `db-init/database-schema-postgres.sql` tabloları kurar.
 
-To wipe the database volume and start over:
+Veritabanını sıfırlamak için:
 
 ```bash
 docker compose down -v
 docker compose up -d
 ```
 
-### 4. Environment
+### 4. Ortam değişkenleri
 
-Backend:
+API:
 
 ```bash
 cd blog-backend
 cp env.example .env
 ```
 
-`blog-backend/env.example` already matches the Docker database user. Change `JWT_SECRET` before you share a deployment.
+`env.example` içindeki veritabanı kullanıcısı Docker ile aynıdır. `JWT_SECRET` ve veritabanı şifresi yalnızca yerel deneme içindir.
 
-Frontend (optional; the app falls back to `http://localhost:5000/api`):
+Ön yüz isteğe bağlıdır. Tanımlı değilse adres `http://localhost:5000/api` olur.
 
 ```bash
 cd frontend
 cp env.example .env
 ```
 
-```env
-REACT_APP_API_URL=http://localhost:5000/api
-```
+### 5. Örnek yazılar
 
-Set this at build time if the API is not on localhost.
-
-### 5. Sample posts
-
-From the repository root, after the database is up:
+Kök dizinden, veritabanı ayaktayken:
 
 ```bash
 npm run seed
 ```
 
-This creates two local accounts and four published posts. Safe to run again; it does not overwrite an existing account’s password.
+Bu komut örnek hesapları ve yazıları yeniden kurar. Kendi açtığın hesaplara dokunmaz.
 
-| Email | Password |
+| E-posta | Şifre |
 | --- | --- |
-| demo@myblog.local | demo1234 |
-| elif@myblog.local | demo1234 |
+| selin.acar@example.com | murekkep |
+| emre.kaya@example.com | murekkep |
 
-These accounts are for local demos only.
-
-### 6. Start the app
+### 6. Uygulamayı çalıştır
 
 ```bash
 npm run dev
 ```
 
-- Frontend: http://localhost:3000
+- Ön yüz: http://localhost:3000
 - API: http://localhost:5000
-- Uploaded images: http://localhost:5000/uploads/...
 
-Or start them separately with `npm run start-backend` and `npm run start-frontend`.
+Ayrı ayrı başlatmak için `npm run start-backend` ve `npm run start-frontend`.
 
-## Project structure
+## Proje yapısı
 
 ```
 my-blog-project/
@@ -129,65 +132,43 @@ my-blog-project/
 │   ├── config/db.js
 │   ├── middleware/auth.js
 │   ├── scripts/seed.js
-│   ├── uploads/
 │   ├── server.js
 │   └── env.example
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   ├── services/
-│   │   ├── config.js
-│   │   └── App.js
 │   └── env.example
 ├── db-init/
 │   └── database-schema-postgres.sql
+├── docs/screenshots/
 ├── docker-compose.yml
 └── package.json
 ```
 
-## Scripts
+## Komutlar
 
-From the repository root:
-
-- `npm run install-all` — install root, frontend, and backend dependencies
-- `npm run dev` — start the API and the frontend
-- `npm run start-backend` — API only
-- `npm run start-frontend` — frontend only
-- `npm run seed` — insert the demo users and posts
-- `npm run build` — production build of the frontend
+- `npm run install-all` — kök, ön yüz ve API bağımlılıklarını kurar
+- `npm run dev` — API ve ön yüzü birlikte başlatır
+- `npm run seed` — örnek hesap ve yazıları yükler
+- `npm run build` — ön yüzün üretim derlemesini alır
 
 ## API
 
-### Authentication
 - `POST /api/register`
 - `POST /api/login`
+- `GET /api/posts` — yayınlanmış yazılar
+- `GET /api/posts/:id` — tek yazı; taslak yalnızca yazarına açık
+- `POST /api/posts` — giriş gerekir
+- `PUT /api/posts/:id` — yazarı günceller
+- `DELETE /api/posts/:id` — yazarı siler
+- `POST /api/uploads/image` — kapak görseli
+- `GET /api/users/:id/profile` — giriş yapan kullanıcının profili ve yazıları
 
-### Posts
-- `GET /api/posts` — published posts
-- `GET /api/posts/:id` — one post; drafts only for the author
-- `POST /api/posts` — authenticated
-- `PUT /api/posts/:id` — authenticated author
-- `DELETE /api/posts/:id` — authenticated author
-- `POST /api/uploads/image` — authenticated cover upload
+## Lisans
 
-### Profile
-- `GET /api/users/:id/profile` — the signed-in user’s own profile and posts
+MIT. Ayrıntı için [LICENSE](LICENSE).
 
-## Deployment
-
-Build the frontend with `REACT_APP_API_URL` pointing at the public API, then host the `frontend/build` folder. The API needs PostgreSQL, a real `JWT_SECRET`, and a persistent place for `blog-backend/uploads` if you keep file uploads.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## License
-
-MIT. See [LICENSE](LICENSE).
-
-## Author
+## Yazar
 
 **Furkan Fidan**
 - GitHub: [@furblood0](https://github.com/furblood0)

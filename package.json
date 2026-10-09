@@ -1,16 +1,14 @@
 {
   "name": "my-blog-project",
   "version": "1.0.0",
-  "description": "Full-stack blog application with React frontend and Node.js backend",
-  "main": "index.js",
+  "description": "Mürekkep — React ve Node.js ile yazılmış bir blog",
   "scripts": {
     "install-all": "npm install && cd frontend && npm install && cd ../blog-backend && npm install",
     "start-backend": "cd blog-backend && npm start",
     "start-frontend": "cd frontend && npm start",
     "dev": "concurrently \"npm run start-backend\" \"npm run start-frontend\"",
     "build": "cd frontend && npm run build",
-    "seed": "cd blog-backend && npm run seed",
-    "test": "cd frontend && npm test"
+    "seed": "cd blog-backend && npm run seed"
   },
   "keywords": [
     "blog",
